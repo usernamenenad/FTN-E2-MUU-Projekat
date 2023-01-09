@@ -269,7 +269,7 @@ void main(void) {
 			// Ako je ukljucen jedan od potpatosnih prekidaca
 			if((CS_POT_1 > PS_POT_1 || CS_POT_2 > PS_POT_2) || (request_in || request_out)) {
 				// Ako je zahtjev za ulazom, ali parking je pun
-				if((CS_POT_1 > PS_POT_1 || request_in) && taken_spots == 0x01) {
+				if((CS_POT_1 > PS_POT_1 || request_in) && taken_spots == 0x0F) {
 					
 					// Ispis da ne postoji vise slobodnih mjesta
 					{
@@ -310,7 +310,10 @@ void main(void) {
 						// Obezbjedjen je slucaj kada se, tokom dizanja rampe,
 						// pojavi auto sa druge strane. Tada ce rampa cekati 
 						// da oba auta sigurno prodju
-						while(wait_ramp || CSS_POT_1 || CSS_POT_2) {if(CSS_POT_1 && CSS_POT_2) {in_out_flag = 1;}};
+						while(wait_ramp || CSS_POT_1 || CSS_POT_2) {
+							if(CS_POT_1 > PS_POT_1 && CSS_POT_2) {in_out_flag = 1;}
+							if(CS_POT_2 > PS_POT_2 && CSS_POT_1) {in_out_flag = 1;}
+						}
 						wait1s();
 					}
 					// Ako rampa nije uspjesno podignuta, daje se izvjestaj o gresci
