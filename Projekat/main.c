@@ -50,6 +50,7 @@ bit wait_ramp      = 0;
 bit all_filled     = 0;
 bit request_in     = 0;
 bit request_out    = 0;
+bit in_out_flag    = 0;
 // ------------- //
 
 unsigned char taken_spots =    0x00;
@@ -265,47 +266,12 @@ void main(void) {
 		CS_RESTART = CSS_RESTART;
 
 		if(!emergency_stop) {
-			// Ako je ukljucen potpatosni prekidac 1 i nije 2
-			if((CS_POT_1 > PS_POT_1 && CS_POT_2 == PS_POT_2) || (request_in && !request_out)) {
-				// Ako ima manje od 15 zauzetih mjesta
-				request_in = 0;
-				if(taken_spots < 0x02) {
-					// Rampa se podize
-					move_ramp = 1;
-					while(move_ramp) {MOTOR_UP = 1;}
-					MOTOR_UP = 0;
-					wait1s();
-					// Ako je rampa uspjesno podignuta, aktivira se granicni prekidac 2
-					if(CSS_GR_2 == 1) {
-						// Ako se, u medjuvremenu, pojavilo auto koje zeli izaci, 
-						// ceka se da se automobil prvobitno skloni
-						if(CSS_POT_2 != CS_POT_2) {
-							while(CSS_POT_2) {} 
-						}
-						// Rampa ostaje podignuta 5 sekundi	+ vrijeme dok se 
-						// automobil ne skloni sa potpatosnog prekidaca
-						wait_ramp = 1;
-						while(wait_ramp || CSS_POT_1) {}
-					}
-					// Ako se rampa nije uspjesno podigla, daje se izvjestaj o gresci
-					else {
-						emergency_stop = 1; displayState(); continue;
-					}
-			
-					if(++taken_spots == 0x0F) {all_filled = 1;}
-					displayState();	
-					// Rampa se spusta
-					move_ramp = 1;
-					while(move_ramp) {MOTOR_DOWN = 1;}
-					MOTOR_DOWN = 0;
-					wait1s();
-					// Ako se rampa nije uspjesno spustila, nece se aktivirati
-					// granicni prekidac 1
-					// Daje se izvjestaj o gresci
-					if(CSS_GR_1 != 1) {emergency_stop = 1; displayState(); continue;}			  
-				}
-				// Ako je zauzeto svih 15 mjesta
-				else {
+			// Ako je ukljucen jedan od potpatosnih prekidaca
+			if((CS_POT_1 > PS_POT_1 || CS_POT_2 > PS_POT_2) || (request_in || request_out)) {
+				// Ako je zahtjev za ulazom, ali parking je pun
+				if((CS_POT_1 > PS_POT_1 || request_in) && taken_spots == 0x01) {
+					
+					// Ispis da ne postoji vise slobodnih mjesta
 					{
 						unsigned char temp[] = "Parking zauzet.\n\0";
 						unsigned char temp_counter = 0x00;
@@ -328,74 +294,52 @@ void main(void) {
 					clearDisplay();
 					writeLine("ZAUZ");
 					wait1s();
-					displayState();
-				}
-			}
-			// // Ako je ukljucen potpatosni prekidac 2 i nije 1 
-			else if((CS_POT_1 == PS_POT_1 && CS_POT_2 > PS_POT_2) || (!request_in && request_out)) {
-			   	request_out = 0;
-				// Rampa se podize
-				move_ramp = 1;
-				while(move_ramp) {MOTOR_UP = 1;}
-				MOTOR_UP = 0;
-				wait1s();
-				// Ako je rampa uspjesno podignuta, aktivira se granicni prekidac 2
-				if(CSS_GR_2 == 1) {
-					// Ako se, u medjuvremenu, pojavilo auto koje zeli uci, 
-					// ceka se da se taj automobil prvobitno skloni	
-					if(CSS_POT_1 != CS_POT_1) {
-						while(CSS_POT_1) {}
-					}
-					// Rampa ostaje podignuta 5 sekundi	+ vrijeme dok se 
-					// automobil ne skloni sa potpatosnog prekidaca
-					wait_ramp = 1;
-					while(wait_ramp || CSS_POT_2) {}
+					displayState();					
 				}
 				else {
-					emergency_stop = 1; displayState(); continue;	
-				}
-
-				if(--taken_spots == 0x0E) {all_filled = 0;}
-				displayState();
-				// Rampa se spusta
-				move_ramp = 1;
-				while(move_ramp) {MOTOR_DOWN = 1;}
-			   	MOTOR_DOWN = 0;
-				wait1s();
-				// Ako se rampa nije uspjesno spustila, nece se aktivirati
-				// granicni prekidac 1
-				// Daje se izvjestaj o gresci
-				if(CSS_GR_1 != 1) {emergency_stop = 1; displayState(); continue;}
-			}
-			// Ako su aktivirana oba potpatosna prekidaca u isto vrijeme, 
-			// prijavljuje se slucaj "kolizije" i ceka se dok se jedan
-			// od automobila ne skloni
-			else if((CS_POT_1 > PS_POT_1 && CS_POT_2 > PS_POT_2) || (request_in && request_out)) {
-				{
-					unsigned char temp[] = "Sudar\n\0";
-					unsigned char temp_counter = 0x00;
-					while(*(temp + temp_counter) != '\0') {
-						*(buffer + buffer_counter++) = *(temp + temp_counter++); 
+					// Iniciranje podizanja rampe
+					move_ramp = 1;
+					while(move_ramp) {MOTOR_UP = 1;}
+					MOTOR_UP = 0;
+					wait1s();
+	
+					// Ako je rampa uspjesno podignuta, aktivira se granicni prekidac 2
+					if(CSS_GR_2) {
+						
+						wait_ramp = 1;
+						// Obezbjedjen je slucaj kada se, tokom dizanja rampe,
+						// pojavi auto sa druge strane. Tada ce rampa cekati 
+						// da oba auta sigurno prodju
+						while(wait_ramp || CSS_POT_1 || CSS_POT_2) {if(CSS_POT_1 && CSS_POT_2) {in_out_flag = 1;}};
+						wait1s();
 					}
-				}
-
-				{
-				 	unsigned char temp[] = "---------------------\0";
-					unsigned char temp_counter = 0x00;
-					while (*(temp + temp_counter) != '\0') {
-						*(buffer + buffer_counter++) = *(temp + temp_counter++);
+					// Ako rampa nije uspjesno podignuta, daje se izvjestaj o gresci
+					else {emergency_stop = 1; displayState(); continue;}
+					if(!in_out_flag) {
+						// Ako je bio zahjev za ulaz, inkrementira se broj zauzetih mjesta
+						if(CS_POT_1 > PS_POT_1 || request_in) {
+							if(++taken_spots == 0x0F) {all_filled = 1;}
+						}
+						// Ako je bio zahtjev za izlaz, dekrementira se broj zauzetih mjesta
+						if(CS_POT_2 > PS_POT_2 || request_out) {
+							if(--taken_spots == 0x0E) {all_filled = 0;}
+						}
 					}
+					displayState();
+	
+					// Iniciranje spustanja rampe
+					move_ramp = 1;
+					while(move_ramp) {MOTOR_DOWN = 1;}
+					MOTOR_DOWN = 0;
+					wait1s();
+	
+					// Ako rampa nije uspjesno spustena, daje se izvjestaj o gresci 
+					if(!CSS_GR_1) {emergency_stop = 1; displayState(); continue;}
+	
+					request_in = 0;
+					request_out = 0;
+					in_out_flag = 0;
 				}
-
-				*(buffer + buffer_counter) = '\0';
-				buffer_counter = 0x00;
-				SBUF = *buffer;
-
-				clearDisplay();
-				writeLine("SUDAR");
-				wait1s();
-				displayState();
-				while(CSS_POT_1 || CSS_POT_2) {}
 			}
 		}
 		else {
