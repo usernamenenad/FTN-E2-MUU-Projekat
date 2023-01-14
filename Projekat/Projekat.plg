@@ -1,0 +1,108 @@
+<html>
+<body>
+<pre>
+<h1>µVision3 Build Log</h1>
+<h2>Project:</h2>
+C:\Users\radov\Desktop\Fakultet\Projekat\Projekat.uv2
+Project File Date:  01/08/2023
+
+<h2>Output:</h2>
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(15): error C141: syntax error near '='
+MAIN.C(16): error C141: syntax error near '='
+MAIN.C(17): error C141: syntax error near '='
+MAIN.C(18): error C141: syntax error near '='
+MAIN.C(19): error C141: syntax error near '='
+MAIN.C(78): error C202: 'counter': undefined identifier
+MAIN.C(79): error C202: 'counter': undefined identifier
+MAIN.C(85): error C202: 'counter': undefined identifier
+compiling display.c...
+Target not created
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(41): error C141: syntax error near '='
+MAIN.C(42): error C141: syntax error near '='
+MAIN.C(43): error C141: syntax error near '='
+MAIN.C(44): error C141: syntax error near '='
+MAIN.C(45): error C141: syntax error near '='
+MAIN.C(58): error C202: 'counter': undefined identifier
+MAIN.C(59): error C202: 'counter': undefined identifier
+MAIN.C(65): error C202: 'counter': undefined identifier
+compiling display.c...
+Target not created
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(58): error C202: 'counter': undefined identifier
+MAIN.C(59): error C202: 'counter': undefined identifier
+MAIN.C(65): error C202: 'counter': undefined identifier
+compiling display.c...
+Target not created
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(15): error C141: syntax error near '='
+MAIN.C(16): error C141: syntax error near '='
+MAIN.C(17): error C141: syntax error near '='
+MAIN.C(18): error C141: syntax error near '='
+MAIN.C(19): error C141: syntax error near '='
+MAIN.C(78): error C202: 'counter': undefined identifier
+MAIN.C(79): error C202: 'counter': undefined identifier
+MAIN.C(85): error C202: 'counter': undefined identifier
+MAIN.C(120): error C208: '_checkCurrentState': too many actual parameters
+MAIN.C(121): error C208: '_checkCurrentState': too many actual parameters
+MAIN.C(122): error C208: '_checkCurrentState': too many actual parameters
+MAIN.C(123): error C208: '_checkCurrentState': too many actual parameters
+MAIN.C(124): error C208: '_checkCurrentState': too many actual parameters
+compiling display.c...
+Target not created
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(15): error C141: syntax error near '='
+MAIN.C(16): error C141: syntax error near '='
+MAIN.C(17): error C141: syntax error near '='
+MAIN.C(18): error C141: syntax error near '='
+MAIN.C(19): error C141: syntax error near '='
+compiling display.c...
+Target not created
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(15): error C141: syntax error near '='
+MAIN.C(16): error C141: syntax error near '='
+MAIN.C(17): error C141: syntax error near '='
+MAIN.C(18): error C141: syntax error near '='
+MAIN.C(19): error C141: syntax error near '='
+compiling display.c...
+Target not created
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(120): warning C182: pointer to different objects
+MAIN.C(121): warning C182: pointer to different objects
+MAIN.C(122): warning C182: pointer to different objects
+MAIN.C(123): warning C182: pointer to different objects
+MAIN.C(124): warning C182: pointer to different objects
+compiling display.c...
+linking...
+Program Size: data=10.1 xdata=182 code=3401
+creating hex file from "Projekat"...
+"Projekat" - 0 Error(s), 5 Warning(s).
+Build target 'Target 1'
+compiling main.c...
+compiling display.c...
+linking...
+Program Size: data=10.1 xdata=182 code=3344
+creating hex file from "Projekat"...
+"Projekat" - 0 Error(s), 0 Warning(s).
+Build target 'Target 1'
+compiling main.c...
+MAIN.C(15): error C141: syntax error near '='
+MAIN.C(21): error C141: syntax error near '}'
+MAIN.C(23): error C129: missing ';' before 'GR_1'
+compiling display.c...
+Target not created
+Build target 'Target 1'
+compiling main.c...
+compiling display.c...
+linking...
+Program Size: data=10.1 xdata=182 code=3542
+creating hex file from "Projekat"...
+"Projekat" - 0 Error(s), 0 Warning(s).

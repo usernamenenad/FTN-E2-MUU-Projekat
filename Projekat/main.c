@@ -10,26 +10,23 @@
 #define MOTOR_DOWN P2_1
 #define DIODE P2_7
 
-// -- Debouncing promjenljive -- //
-unsigned char PHS_GR_1    = 1;
-unsigned char PHS_GR_2    = 0;
-unsigned char PHS_POT_1   = 0;
-unsigned char PHS_POT_2   = 0;
-unsigned char PHS_RESTART = 0;
+// -- Struktura za prekidace -- // 
+typedef struct switch_st {
 
-unsigned char CHS_GR_1    = 1;
-unsigned char CHS_GR_2    = 0;
-unsigned char CHS_POT_1   = 0;
-unsigned char CHS_POT_2   = 0;
-unsigned char CHS_RESTART = 0;
+	unsigned char PHS;
+	unsigned char CHS;
+	unsigned char CSS;
+	unsigned char CS;
+	unsigned char PS;
 
-unsigned char CSS_GR_1    = 1;
-unsigned char CSS_GR_2    = 0;
-unsigned char CSS_POT_1   = 0;
-unsigned char CSS_POT_2   = 0;
-unsigned char CSS_RESTART = 0;
-// ----------------------------- //
+}SWITCH;
 
+SWITCH GR_1;
+SWITCH GR_2;
+SWITCH POT_1;
+SWITCH POT_2;
+SWITCH RST;
+// -------------------------- //
 
 // -- Counteri -- //
 unsigned char counter_GR_1    = 0x00;
@@ -56,12 +53,12 @@ bit in_out_flag    = 0;
 unsigned char taken_spots =    0x00;
 unsigned char buffer[70];
 
-void checkCurrentState(unsigned char* CHS, unsigned char* PHS, unsigned char* CSS, unsigned char* counter) {
+void checkCurrentState(SWITCH* sw, unsigned char* counter) {
 	
-	if(*CHS == *PHS) {
+	if(sw->CHS == sw->PHS) {
 		if(++(*counter) == 0x05) {
 			*counter = 0x00;
-			*CSS = *CHS;
+			sw->CSS = sw->CHS;
 			return;
 		}
 	}
@@ -95,23 +92,23 @@ void timer_1_interrupt(void) interrupt 3{
 		}	
 	}	
 	
-	CHS_GR_1    = GR_PREKIDAC_1;
-	CHS_GR_2    = GR_PREKIDAC_2;
-	CHS_POT_1   = POTPATOSNI_PREKIDAC_1;
-	CHS_POT_2   = POTPATOSNI_PREKIDAC_2;
-	CHS_RESTART = RESTART;
+	GR_1.CHS    = GR_PREKIDAC_1;
+	GR_2.CHS    = GR_PREKIDAC_2;
+	POT_1.CHS   = POTPATOSNI_PREKIDAC_1;
+	POT_2.CHS   = POTPATOSNI_PREKIDAC_2;
+	RST.CHS     = RESTART;
 
-	checkCurrentState(&CHS_GR_1, &PHS_GR_1, &CSS_GR_1, &counter_GR_1);
-	checkCurrentState(&CHS_GR_2, &PHS_GR_2, &CSS_GR_2, &counter_GR_2);
-	checkCurrentState(&CHS_POT_1, &PHS_POT_1, &CSS_POT_1, &counter_POT_1);
-	checkCurrentState(&CHS_POT_2, &PHS_POT_2, &CSS_POT_2, &counter_POT_2);
-	checkCurrentState(&CHS_RESTART, &PHS_RESTART, &CSS_RESTART, &counter_RESTART);
+	checkCurrentState(&GR_1, &counter_GR_1);
+	checkCurrentState(&GR_2, &counter_GR_2);
+	checkCurrentState(&POT_1, &counter_POT_1);
+	checkCurrentState(&POT_2, &counter_POT_2);
+	checkCurrentState(&RST, &counter_RESTART);
 
-	PHS_GR_1    = CHS_GR_1;
-	PHS_GR_2    = CHS_GR_2;
-	PHS_POT_1   = CHS_POT_1;
-	PHS_POT_2   = CHS_POT_2;
-	PHS_RESTART = CHS_RESTART;			
+	GR_1.PHS    = GR_1.CHS;
+	GR_2.PHS    = GR_2.CHS;
+	POT_1.PHS   = POT_1.CHS;
+	POT_2.PHS   = POT_2.CHS;
+	RST.PHS     = RST.CHS;			
 }
 
 void uart_interrupt(void) interrupt 4{
@@ -202,6 +199,24 @@ void displayState(void) {
 	SBUF = *(buffer + buffer_counter++);
 }
 
+void initSwitch(SWITCH* sw) {
+	
+	if(sw == &GR_1) {
+		sw->PHS = 1;
+		sw->PS  = 1;
+		sw->CHS = 1;
+		sw->CSS = 1;
+		sw->CS  = 1;
+		return;
+	}
+	
+	sw->PHS = 0;
+	sw->PS  = 0;
+	sw->CHS = 0;
+	sw->CSS = 0;
+	sw->CS  = 0; 
+}
+
 void initController(void) {
 
 	EA = 0;
@@ -238,38 +253,32 @@ void initController(void) {
 	P2 = 0x00;	
 	DIODE = 1;
 
+	initSwitch(&GR_1);
+	initSwitch(&GR_2);
+	initSwitch(&POT_1);
+	initSwitch(&POT_2);
+	initSwitch(&RST);
+
 	EA = 1;
 } 
 
 void main(void) {
 	
-	unsigned char CS_GR_1;
-	unsigned char CS_GR_2;
-	unsigned char CS_POT_1;
-	unsigned char CS_POT_2;
-	unsigned char CS_RESTART;
-
-	unsigned char PS_GR_1;
-	unsigned char PS_GR_2;
-	unsigned char PS_POT_1;
-	unsigned char PS_POT_2;
-	unsigned char PS_RESTART;
-
 	initController();
 	
 	while(1) {
 		
-		CS_GR_1    = CSS_GR_1;
-		CS_GR_2    = CSS_GR_2;
-		CS_POT_1   = CSS_POT_1;
-		CS_POT_2   = CSS_POT_2;
-		CS_RESTART = CSS_RESTART;
+		GR_1.CS  = GR_1.CSS;
+		GR_2.CS  = GR_2.CSS;
+		POT_1.CS = POT_1.CSS;
+		POT_2.CS = POT_2.CSS;
+		RST.CS   = RST.CSS; 
 
 		if(!emergency_stop) {
 			// Ako je ukljucen jedan od potpatosnih prekidaca
-			if((CS_POT_1 > PS_POT_1 || CS_POT_2 > PS_POT_2) || (request_in || request_out)) {
+			if((POT_1.CS > POT_1.PS || POT_2.CS > POT_2.CSS) || (request_in || request_out)) {
 				// Ako je zahtjev za ulazom, ali parking je pun
-				if((CS_POT_1 > PS_POT_1 || request_in) && taken_spots == 0x0F) {
+				if((POT_1.CS > POT_1.PS || request_in) && taken_spots == 0x0F) {
 					
 					// Ispis da ne postoji vise slobodnih mjesta
 					{
@@ -304,15 +313,15 @@ void main(void) {
 					wait1s();
 	
 					// Ako je rampa uspjesno podignuta, aktivira se granicni prekidac 2
-					if(CSS_GR_2) {
+					if(GR_2.CSS) {
 						
 						wait_ramp = 1;
 						// Obezbjedjen je slucaj kada se, tokom dizanja rampe,
 						// pojavi auto sa druge strane. Tada ce rampa cekati 
 						// da oba auta sigurno prodju
-						while(wait_ramp || CSS_POT_1 || CSS_POT_2) {
-							if(CS_POT_1 > PS_POT_1 && CSS_POT_2) {in_out_flag = 1;}
-							if(CS_POT_2 > PS_POT_2 && CSS_POT_1) {in_out_flag = 1;}
+						while(wait_ramp || POT_1.CSS || POT_2.CSS) {
+							if(POT_1.CS > POT_1.PS && POT_2.CSS) {in_out_flag = 1;}
+							if(POT_2.CS > POT_2.PS && POT_1.CSS) {in_out_flag = 1;}
 						}
 						wait1s();
 					}
@@ -320,11 +329,11 @@ void main(void) {
 					else {emergency_stop = 1; displayState(); continue;}
 					if(!in_out_flag) {
 						// Ako je bio zahjev za ulaz, inkrementira se broj zauzetih mjesta
-						if(CS_POT_1 > PS_POT_1 || request_in) {
+						if(POT_1.CS > POT_1.PS || request_in) {
 							if(++taken_spots == 0x0F) {all_filled = 1;}
 						}
 						// Ako je bio zahtjev za izlaz, dekrementira se broj zauzetih mjesta
-						if(CS_POT_2 > PS_POT_2 || request_out) {
+						if(POT_2.CS > POT_2.PS || request_out) {
 							if(--taken_spots == 0x0E) {all_filled = 0;}
 						}
 					}
@@ -337,7 +346,7 @@ void main(void) {
 					wait1s();
 	
 					// Ako rampa nije uspjesno spustena, daje se izvjestaj o gresci 
-					if(!CSS_GR_1) {emergency_stop = 1; displayState(); continue;}
+					if(!GR_1.CSS) {emergency_stop = 1; displayState(); continue;}
 	
 					request_in = 0;
 					request_out = 0;
@@ -348,11 +357,11 @@ void main(void) {
 		else {
 			// Ako je prijavljena greska, ceka se pritisak na taster RESTART
 			// kako bi se rampa ponovo aktivirala
-			if(CS_RESTART > PS_RESTART) {
+			if(RST.CS > RST.PS) {
 				{
 					unsigned char temp[] = "Rampa se restartuje...\n\0";
 					unsigned char temp_counter = 0x00;
-					while(*(temp + temp_counter) != '\0') {
+					while(*(temp + temp_counter) != '\0') {								   
 						*(buffer + buffer_counter++) = *(temp + temp_counter++); 
 					}
 				}
@@ -373,17 +382,18 @@ void main(void) {
 				writeLine("RST...");
 				wait1s();
 
-				if(CSS_POT_1) {request_in = 1;}
-				if(CSS_POT_2) {request_out = 1;} 
+				if(POT_1.CSS && !request_in)  {request_in = 1;}
+				if(POT_2.CSS && !request_out) {request_out = 1;} 
+
 				emergency_stop = 0;
 				displayState();
 			}
 		}
 		
-		PS_GR_1    = CS_GR_1;		
-		PS_GR_2    = CS_GR_2;
-		PS_POT_1   = CS_POT_1;
-		PS_POT_2   = CS_POT_2;
-		PS_RESTART = CS_RESTART;
+		GR_1.PS  = GR_1.CS;
+		GR_2.PS  = GR_2.CS;
+		POT_1.PS = POT_1.CS;
+		POT_2.PS = POT_2.CS;
+		RST.PS   = RST.CS;
 	}	
 }
