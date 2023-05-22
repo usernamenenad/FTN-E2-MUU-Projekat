@@ -1,0 +1,455 @@
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 1   
+
+
+C51 COMPILER V8.16, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE main.c LARGE BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include <display.h>
+   2          
+   3          #define GR_PREKIDAC_1 P0_0
+   4          #define GR_PREKIDAC_2 P0_1
+   5          #define POTPATOSNI_PREKIDAC_1 P0_2
+   6          #define POTPATOSNI_PREKIDAC_2 P0_3
+   7          #define RESTART P0_4
+   8          
+   9          #define MOTOR_UP P2_0
+  10          #define MOTOR_DOWN P2_1
+  11          #define DIODE P2_7
+  12          
+  13          typedef struct switch_st {
+  14          
+  15                  unsigned char PHS;
+  16                  unsigned char CHS;
+  17                  unsigned char CSS;
+  18                  unsigned char CS;
+  19                  unsigned char PS;
+  20          
+  21          }SWITCH;
+  22          
+  23          SWITCH GR_1;
+  24          SWITCH GR_2;
+  25          SWITCH POT_1;
+  26          SWITCH POT_2;
+  27          SWITCH RST;
+  28          
+  29          // -- Debouncing promjenljive -- //
+  30          unsigned char PHS_GR_1    = 1;
+  31          unsigned char PHS_GR_2    = 0;
+  32          unsigned char PHS_POT_1   = 0;
+  33          unsigned char PHS_POT_2   = 0;
+  34          unsigned char PHS_RESTART = 0;
+  35          
+  36          unsigned char CHS_GR_1    = 1;
+  37          unsigned char CHS_GR_2    = 0;
+  38          unsigned char CHS_POT_1   = 0;
+  39          unsigned char CHS_POT_2   = 0;
+  40          unsigned char CHS_RESTART = 0;
+  41          
+  42          unsigned char CSS_GR_1    = 1;
+  43          unsigned char CSS_GR_2    = 0;
+  44          unsigned char CSS_POT_1   = 0;
+  45          unsigned char CSS_POT_2   = 0;
+  46          unsigned char CSS_RESTART = 0;
+  47          // ----------------------------- //
+  48          
+  49          
+  50          // -- Counteri -- //
+  51          unsigned char counter_GR_1    = 0x00;
+  52          unsigned char counter_GR_2    = 0x00;
+  53          unsigned char counter_POT_1   = 0x00;
+  54          unsigned char counter_POT_2   = 0x00;
+  55          unsigned char counter_RESTART = 0x00;
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 2   
+
+  56          unsigned int counter_3s       = 0x00;
+  57          unsigned int counter_5s       = 0x00;
+  58          unsigned char buffer_counter  = 0x00;
+  59          // ------------- //
+  60          
+  61          // -- Flagovi -- //
+  62          bit emergency_stop = 0;
+  63          bit diode_flag     = 0;
+  64          bit move_ramp      = 0;
+  65          bit wait_ramp      = 0;
+  66          bit all_filled     = 0;
+  67          bit request_in     = 0;
+  68          bit request_out    = 0;
+  69          bit in_out_flag    = 0;
+  70          // ------------- //
+  71          
+  72          unsigned char taken_spots =    0x00;
+  73          unsigned char buffer[70];
+  74          
+  75          void checkCurrentState(SWITCH* sw, unsigned char* counter) {
+  76   1              
+  77   1              if(sw->CHS == sw->PHS) {
+  78   2                      if(++(*counter) == 0x05) {
+  79   3                              *counter = 0x00;
+  80   3                              sw->CSS = sw->CHS;
+  81   3                              return;
+  82   3                      }
+  83   2              }
+  84   1              else {
+  85   2                      *counter = 0x00;        
+  86   2              }                               
+  87   1      }
+  88          
+  89          void timer_1_interrupt(void) interrupt 3{
+  90   1      
+  91   1              TH1 = 0xEE;
+  92   1              TL1 = 0x00;
+  93   1              
+  94   1              if(move_ramp) {
+  95   2                      
+  96   2                      switch(++counter_3s) {
+  97   3                              case 150: case 300: case 450:
+  98   3                                      DIODE = ~DIODE;
+  99   3                                      break;
+ 100   3                              case 600:
+ 101   3                                      move_ramp = 0;
+ 102   3                                      counter_3s = 0x00;
+ 103   3                                      DIODE = 1;
+ 104   3                                      break;
+ 105   3                      }               
+ 106   2              }
+ 107   1              
+ 108   1              if(wait_ramp) {
+ 109   2                      if(++counter_5s == 1000) {
+ 110   3                              wait_ramp = 0; counter_5s = 0x00;
+ 111   3                      }       
+ 112   2              }       
+ 113   1              
+ 114   1              GR_1.CHS    = GR_PREKIDAC_1;
+ 115   1              GR_2.CHS    = GR_PREKIDAC_2;
+ 116   1              POT_1.CHS   = POTPATOSNI_PREKIDAC_1;
+ 117   1              POT_2.CHS   = POTPATOSNI_PREKIDAC_2;
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 3   
+
+ 118   1              RST.CHS     = RESTART;
+ 119   1      
+ 120   1              checkCurrentState(&GR_1, &counter_GR_1);
+ 121   1              checkCurrentState(&GR_2, &counter_GR_2);
+ 122   1              checkCurrentState(&POT_1, &counter_POT_1);
+ 123   1              checkCurrentState(&POT_2, &counter_POT_2);
+ 124   1              checkCurrentState(&RST, &counter_RESTART);
+ 125   1      
+ 126   1              GR_1.PHS    = GR_1.CHS;
+ 127   1              GR_2.PHS    = GR_2.CHS;
+ 128   1              POT_1.PHS   = POT_1.CHS;
+ 129   1              POT_2.PHS   = POT_2.CHS;
+ 130   1              RST.PHS     = RST.CHS;                  
+ 131   1      }
+ 132          
+ 133          void uart_interrupt(void) interrupt 4{
+ 134   1      
+ 135   1              if(TI) {
+ 136   2                      TI = 0;
+ 137   2                      if(*(buffer + buffer_counter) != '\0') {
+ 138   3                              SBUF = *(buffer + buffer_counter++);
+ 139   3                      }
+ 140   2                      else {
+ 141   3                              buffer_counter = 0x00;
+ 142   3                              *buffer = '\0';
+ 143   3                      }
+ 144   2              }
+ 145   1      } 
+ 146          
+ 147          void displayState(void) {
+ 148   1              
+ 149   1              clearDisplay();
+ 150   1              if(!emergency_stop) {
+ 151   2                      writeLine("PR");
+ 152   2              }
+ 153   1              else {
+ 154   2                      writeLine("PNR");
+ 155   2              }
+ 156   1              newLine();
+ 157   1              writeLine("BZM: ");
+ 158   1              if(taken_spots < 0x09) {writeChar('0');}
+ 159   1              else                   {writeChar('1');}
+ 160   1              
+ 161   1              writeChar(taken_spots%10 + 0x30);
+ 162   1      
+ 163   1              {
+ 164   2                      unsigned char temp[] = "Stanje: \0";
+ 165   2                      unsigned char temp_counter = 0x00;
+ 166   2                      while(*(temp + temp_counter) != '\0') {
+ 167   3                              *(buffer + buffer_counter++) = *(temp + temp_counter++);
+ 168   3                      }
+ 169   2              }
+ 170   1      
+ 171   1              {
+ 172   2                      if(!emergency_stop) {
+ 173   3                              unsigned char temp[] = "Radi.\n\0";
+ 174   3                              unsigned char temp_counter = 0x00;
+ 175   3                              while (*(temp + temp_counter) != '\0') {
+ 176   4                                      *(buffer + buffer_counter++) = *(temp + temp_counter++);
+ 177   4                              }               
+ 178   3                      }
+ 179   2                      else {
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 4   
+
+ 180   3                              unsigned char temp[] = "Ne radi.\n\0";
+ 181   3                              unsigned char temp_counter = 0x00;
+ 182   3                              while (*(temp + temp_counter) != '\0') {
+ 183   4                                      *(buffer + buffer_counter++) = *(temp + temp_counter++);
+ 184   4                              }       
+ 185   3                      }
+ 186   2              }
+ 187   1      
+ 188   1              {
+ 189   2                      unsigned char temp[] = "Trenutno na parkingu: \0";
+ 190   2                      unsigned char temp_counter = 0x00;
+ 191   2                      while (*(temp + temp_counter) != '\0') {
+ 192   3                                      *(buffer + buffer_counter++) = *(temp + temp_counter++);
+ 193   3                      }
+ 194   2              }
+ 195   1              
+ 196   1              {
+ 197   2                      if(taken_spots < 0x09) {
+ 198   3                              *(buffer + buffer_counter++) = '0';
+ 199   3                      }
+ 200   2                      else {
+ 201   3                              *(buffer + buffer_counter++) = '1';
+ 202   3                      }
+ 203   2                      *(buffer + buffer_counter++) = taken_spots%10 + 0x30;
+ 204   2                      *(buffer + buffer_counter++) = '\n';
+ 205   2              }
+ 206   1              
+ 207   1              {
+ 208   2                      unsigned char temp[] = "---------------------\0";
+ 209   2                      unsigned char temp_counter = 0x00;
+ 210   2                      while (*(temp + temp_counter) != '\0') {
+ 211   3                                      *(buffer + buffer_counter++) = *(temp + temp_counter++);
+ 212   3                      }
+ 213   2              }
+ 214   1      
+ 215   1              *(buffer + buffer_counter++) = '\n';
+ 216   1              *(buffer + buffer_counter) = '\0';
+ 217   1              buffer_counter = 0x00;
+ 218   1              SBUF = *(buffer + buffer_counter++);
+ 219   1      }
+ 220          
+ 221          void initSwitch(SWITCH* sw) {
+ 222   1              
+ 223   1              if(sw == &GR_1) {
+ 224   2                      sw->PHS = 1;
+ 225   2                      sw->PS  = 1;
+ 226   2                      sw->CHS = 1;
+ 227   2                      sw->CSS = 1;
+ 228   2                      sw->CS  = 1;
+ 229   2                      return;
+ 230   2              }
+ 231   1              
+ 232   1              sw->PHS = 0;
+ 233   1              sw->PS  = 0;
+ 234   1              sw->CHS = 0;
+ 235   1              sw->CSS = 0;
+ 236   1              sw->CS  = 0; 
+ 237   1      }
+ 238          
+ 239          void initController(void) {
+ 240   1      
+ 241   1              EA = 0;
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 5   
+
+ 242   1      
+ 243   1              initDisplay();
+ 244   1      
+ 245   1              // -- Potrebe simulacije, podrazumijevane vrijednosti prekidaca na pocetku -- //
+ 246   1      
+ 247   1              GR_PREKIDAC_1 = 0x01;
+ 248   1              GR_PREKIDAC_2 = 0x00;
+ 249   1              POTPATOSNI_PREKIDAC_1 = 0x00;
+ 250   1              POTPATOSNI_PREKIDAC_2 = 0x00;
+ 251   1              RESTART = 0x00;
+ 252   1      
+ 253   1              // -- Inicijalizacija 8-bit UART komunikacije sa promjenljivim baud-rate-om -- //
+ 254   1      
+ 255   1              SCON = 0x50;
+ 256   1              PCON = (PCON & 0x3F) | 0x80;
+ 257   1              BDRCON = (BDRCON & 0xE0) | 0x1C;
+ 258   1              BRL = 0xFD;
+ 259   1              ES = 1;
+ 260   1      
+ 261   1              // -- Inicijalizacija tajmera 1 sa 16-bit modom i prekidom na svakih 5ms -- //
+ 262   1      
+ 263   1              TH1 = 0xEE;
+ 264   1              TL1 = 0x00;
+ 265   1              TMOD = (TMOD & 0x0F) | 0x10;
+ 266   1              ET1 = 1;
+ 267   1              TR1 = 1;
+ 268   1              ET1 = 1;
+ 269   1      
+ 270   1              displayState();
+ 271   1              
+ 272   1              P2 = 0x00;      
+ 273   1              DIODE = 1;
+ 274   1      
+ 275   1              initSwitch(&GR_1);
+ 276   1              initSwitch(&GR_2);
+ 277   1              initSwitch(&POT_1);
+ 278   1              initSwitch(&POT_2);
+ 279   1              initSwitch(&RST);
+ 280   1      
+ 281   1              EA = 1;
+ 282   1      } 
+ 283          
+ 284          void main(void) {
+ 285   1              
+ 286   1              initController();
+ 287   1              
+ 288   1              while(1) {
+ 289   2                      
+ 290   2                      GR_1.CS  = GR_1.CSS;
+ 291   2                      GR_2.CS  = GR_2.CSS;
+ 292   2                      POT_1.CS = POT_1.CSS;
+ 293   2                      POT_2.CS = POT_2.CSS;
+ 294   2                      RST.CS   = RST.CSS; 
+ 295   2      
+ 296   2                      if(!emergency_stop) {
+ 297   3                              // Ako je ukljucen jedan od potpatosnih prekidaca
+ 298   3                              if((POT_1.CS > POT_1.PS || POT_2.CS > POT_2.CSS) || (request_in || request_out)) {
+ 299   4                                      // Ako je zahtjev za ulazom, ali parking je pun
+ 300   4                                      if((POT_1.CS > POT_1.PS || request_in) && taken_spots == 0x0F) {
+ 301   5                                              
+ 302   5                                              // Ispis da ne postoji vise slobodnih mjesta
+ 303   5                                              {
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 6   
+
+ 304   6                                                      unsigned char temp[] = "Parking zauzet.\n\0";
+ 305   6                                                      unsigned char temp_counter = 0x00;
+ 306   6                                                      while(*(temp + temp_counter) != '\0') {
+ 307   7                                                              *(buffer + buffer_counter++) = *(temp + temp_counter++); 
+ 308   7                                                      }
+ 309   6                                              }
+ 310   5      
+ 311   5                                              {
+ 312   6                                                      unsigned char temp[] = "---------------------\n\0";
+ 313   6                                                      unsigned char temp_counter = 0x00;
+ 314   6                                                      while (*(temp + temp_counter) != '\0') {
+ 315   7                                                              *(buffer + buffer_counter++) = *(temp + temp_counter++);
+ 316   7                                                      }
+ 317   6                                              }
+ 318   5      
+ 319   5                                              *(buffer + buffer_counter) = '\0';
+ 320   5                                              buffer_counter = 0x00;
+ 321   5                                              SBUF = *(buffer + buffer_counter++);    
+ 322   5                                              clearDisplay();
+ 323   5                                              writeLine("ZAUZ");
+ 324   5                                              wait1s();
+ 325   5                                              displayState();                                 
+ 326   5                                      }
+ 327   4                                      else {
+ 328   5                                              // Iniciranje podizanja rampe
+ 329   5                                              move_ramp = 1;
+ 330   5                                              while(move_ramp) {MOTOR_UP = 1;}
+ 331   5                                              MOTOR_UP = 0;
+ 332   5                                              wait1s();
+ 333   5              
+ 334   5                                              // Ako je rampa uspjesno podignuta, aktivira se granicni prekidac 2
+ 335   5                                              if(GR_2.CSS) {
+ 336   6                                                      
+ 337   6                                                      wait_ramp = 1;
+ 338   6                                                      // Obezbjedjen je slucaj kada se, tokom dizanja rampe,
+ 339   6                                                      // pojavi auto sa druge strane. Tada ce rampa cekati 
+ 340   6                                                      // da oba auta sigurno prodju
+ 341   6                                                      while(wait_ramp || POT_1.CSS || POT_2.CSS) {
+ 342   7                                                              if(POT_1.CS > POT_1.PS && POT_2.CSS) {in_out_flag = 1;}
+ 343   7                                                              if(POT_2.CS > POT_2.PS && POT_1.CSS) {in_out_flag = 1;}
+ 344   7                                                      }
+ 345   6                                                      wait1s();
+ 346   6                                              }
+ 347   5                                              // Ako rampa nije uspjesno podignuta, daje se izvjestaj o gresci
+ 348   5                                              else {emergency_stop = 1; displayState(); continue;}
+ 349   5                                              if(!in_out_flag) {
+ 350   6                                                      // Ako je bio zahjev za ulaz, inkrementira se broj zauzetih mjesta
+ 351   6                                                      if(POT_1.CS > POT_1.PS || request_in) {
+ 352   7                                                              if(++taken_spots == 0x0F) {all_filled = 1;}
+ 353   7                                                      }
+ 354   6                                                      // Ako je bio zahtjev za izlaz, dekrementira se broj zauzetih mjesta
+ 355   6                                                      if(POT_2.CS > POT_2.PS || request_out) {
+ 356   7                                                              if(--taken_spots == 0x0E) {all_filled = 0;}
+ 357   7                                                      }
+ 358   6                                              }
+ 359   5                                              displayState();
+ 360   5              
+ 361   5                                              // Iniciranje spustanja rampe
+ 362   5                                              move_ramp = 1;
+ 363   5                                              while(move_ramp) {MOTOR_DOWN = 1;}
+ 364   5                                              MOTOR_DOWN = 0;
+ 365   5                                              wait1s();
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 7   
+
+ 366   5              
+ 367   5                                              // Ako rampa nije uspjesno spustena, daje se izvjestaj o gresci 
+ 368   5                                              if(!GR_1.CSS) {emergency_stop = 1; displayState(); continue;}
+ 369   5              
+ 370   5                                              request_in = 0;
+ 371   5                                              request_out = 0;
+ 372   5                                              in_out_flag = 0;
+ 373   5                                      }
+ 374   4                              }
+ 375   3                      }
+ 376   2                      else {
+ 377   3                              // Ako je prijavljena greska, ceka se pritisak na taster RESTART
+ 378   3                              // kako bi se rampa ponovo aktivirala
+ 379   3                              if(RST.CS > RST.PS) {
+ 380   4                                      {
+ 381   5                                              unsigned char temp[] = "Rampa se restartuje...\n\0";
+ 382   5                                              unsigned char temp_counter = 0x00;
+ 383   5                                              while(*(temp + temp_counter) != '\0') {                                                            
+ 384   6                                                      *(buffer + buffer_counter++) = *(temp + temp_counter++); 
+ 385   6                                              }
+ 386   5                                      }
+ 387   4      
+ 388   4                                      {
+ 389   5                                              unsigned char temp[] = "---------------------\0";
+ 390   5                                              unsigned char temp_counter = 0x00;
+ 391   5                                              while (*(temp + temp_counter) != '\0') {
+ 392   6                                                      *(buffer + buffer_counter++) = *(temp + temp_counter++);
+ 393   6                                              }
+ 394   5                                      }
+ 395   4                                      *(buffer + buffer_counter++) = '\n';
+ 396   4                                      *(buffer + buffer_counter) = '\0';
+ 397   4                                      buffer_counter = 0x00;
+ 398   4                                      SBUF = *(buffer + buffer_counter++);
+ 399   4      
+ 400   4                                      clearDisplay();
+ 401   4                                      writeLine("RST...");
+ 402   4                                      wait1s();
+ 403   4      
+ 404   4                                      if(POT_1.CSS && !request_in)  {request_in = 1;}
+ 405   4                                      if(POT_2.CSS && !request_out) {request_out = 1;} 
+ 406   4      
+ 407   4                                      emergency_stop = 0;
+ 408   4                                      displayState();
+ 409   4                              }
+ 410   3                      }
+ 411   2                      
+ 412   2                      GR_1.PS  = GR_1.CS;
+ 413   2                      GR_2.PS  = GR_2.CS;
+ 414   2                      POT_1.PS = POT_1.CS;
+ 415   2                      POT_2.PS = POT_2.CS;
+ 416   2                      RST.PS   = RST.CS;
+ 417   2              }       
+ 418   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2195    ----
+   CONSTANT SIZE    =    191    ----
+   XDATA SIZE       =    121      60
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+C51 COMPILER V8.16   MAIN                                                                  01/14/2023 21:46:50 PAGE 8   
+
+   BIT SIZE         =      8    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
